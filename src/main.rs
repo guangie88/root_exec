@@ -5,6 +5,7 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate log4rs;
+extern crate simple_logger;
 extern crate structopt;
 
 #[macro_use]
@@ -25,7 +26,7 @@ use errors::*;
 #[structopt(name = "root_exec", about = "Program to run root_exec.sh")]
 struct MainConfig {
     #[structopt(short = "l", long = "log-config", help = "Log config file path")]
-    log_config_path: String,
+    log_config_path: Option<String>,
 }
 
 fn set_uid_root() -> Result<()> {
@@ -61,8 +62,13 @@ fn get_script_path() -> Result<PathBuf> {
 fn run() -> Result<()> {
     let config = MainConfig::from_args();
 
-    log4rs::init_file(&config.log_config_path, Default::default())
-       .chain_err(|| format!("Unable to initialize log4rs logger with the given config file at '{}'", config.log_config_path))?;
+    if let &Some(ref log_config_path) = &config.log_config_path {
+        log4rs::init_file(log_config_path, Default::default())
+            .chain_err(|| format!("Unable to initialize log4rs logger with the given config file at '{}'", log_config_path))?;
+    } else {
+        simple_logger::init()
+            .chain_err(|| "Unable to initialize default logger")?;
+    }
 
     // check for root access first
     set_uid_root()?;
